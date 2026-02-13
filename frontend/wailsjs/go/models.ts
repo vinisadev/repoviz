@@ -1,5 +1,25 @@
 export namespace main {
 	
+	export class FileConnection {
+	    from: string;
+	    to: string;
+	    fromFile: string;
+	    toFile: string;
+	    type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileConnection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
+	        this.fromFile = source["fromFile"];
+	        this.toFile = source["toFile"];
+	        this.type = source["type"];
+	    }
+	}
 	export class FileInfo {
 	    name: string;
 	    path: string;
