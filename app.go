@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -19,6 +21,17 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// SelectDirectory opens a directory picker dialog
+func (a *App) SelectDirectory() (string, error) {
+	dialog, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Repository Directory",
+	})
+	if err != nil {
+		return "", err
+	}
+	return dialog, nil
 }
 
 // Greet returns a greeting for the given name
