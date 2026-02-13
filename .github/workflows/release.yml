@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact-name: repoviz-linux-amd64
+            artifact-path: build/bin/repoviz
+            zip-name: repoviz-linux-amd64.zip
+          - os: windows-latest
+            artifact-name: repoviz-windows-amd64
+            artifact-path: build/bin/repoviz.exe
+            zip-name: repoviz-windows-amd64.zip
+          - os: macos-latest
+            artifact-name: repoviz-darwin-amd64
+            artifact-path: build/bin/repoviz.app
+            zip-name: repoviz-darwin-amd64.zip
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+      
+      - name: Build Wails app
+        env:
+          CGO_ENABLED: 1
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          wails build -clean -platform ${{ matrix.os == 'ubuntu-latest' && 'linux/amd64' || matrix.os == 'windows-latest' && 'windows/amd64' || 'darwin/amd64' }}
+      
+      - name: Zip artifact
+        run: |
+          cd build/bin
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            powershell Compress-Archive -Path repoviz.exe -DestinationPath repoviz-windows-amd64.zip
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            zip -r repoviz-darwin-amd64.zip repoviz.app
+          else
+            zip repoviz-linux-amd64.zip repoviz
+          fi
+          cd ../..
+        shell: bash
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: build/bin/${{ matrix.zip-name }}
+          retention-days: 7
+  
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
