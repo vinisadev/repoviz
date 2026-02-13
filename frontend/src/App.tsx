@@ -2,20 +2,39 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
 import { Button } from './components/ui/button'
 import { FolderOpen } from 'lucide-react'
-import { SelectDirectory } from '../wailsjs/go/main/App'
+import { SelectDirectory, ScanRepository } from '../wailsjs/go/main/App'
+import { Dashboard } from './components/Dashboard'
+
+interface FileInfo {
+  name: string
+  path: string
+  isDir: boolean
+  children?: FileInfo[]
+}
 
 function App() {
   const [selectedPath, setSelectedPath] = useState<string>('')
+  const [currentRepo, setCurrentRepo] = useState<string | null>(null)
 
   const handleSelectDirectory = async () => {
     try {
       const path = await SelectDirectory()
       if (path) {
         setSelectedPath(path)
+        setCurrentRepo(path)
       }
     } catch (error) {
       console.error('Failed to select directory:', error)
     }
+  }
+
+  const handleBack = () => {
+    setCurrentRepo(null)
+    setSelectedPath('')
+  }
+
+  if (currentRepo) {
+    return <Dashboard repoPath={currentRepo} onBack={handleBack} />
   }
 
   return (
