@@ -22,6 +22,7 @@ interface DashboardProps {
 export function Dashboard({ repoPath, onBack }: DashboardProps) {
   const [fileTree, setFileTree] = React.useState<FileInfo[]>([])
   const [connections, setConnections] = React.useState<FileConnection[]>([])
+  const [selectedFile, setSelectedFile] = React.useState<FileInfo | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [showGraph, setShowGraph] = React.useState(true)
@@ -37,11 +38,15 @@ export function Dashboard({ repoPath, onBack }: DashboardProps) {
           GetFileConnections(repoPath),
         ])
 
+        console.log('Dashboard - Loaded connections:', conns.length)
+        console.log('Dashboard - First 5 connections:', conns.slice(0, 5))
+
         if (tree) {
           setFileTree([tree])
         }
         setConnections(conns)
       } catch (err) {
+        console.error('Dashboard - Error loading data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load repository')
       } finally {
         setLoading(false)
@@ -52,7 +57,13 @@ export function Dashboard({ repoPath, onBack }: DashboardProps) {
   }, [repoPath])
 
   const handleSelectFile = (file: FileInfo) => {
-    console.log('Selected file:', file)
+    console.log('Dashboard - handleSelectFile called with:', file)
+    if (file.isDir) {
+      console.log('Dashboard - Ignoring directory selection')
+      return
+    }
+    console.log('Dashboard - Setting selected file:', file)
+    setSelectedFile(file)
   }
 
   return (
@@ -99,7 +110,7 @@ export function Dashboard({ repoPath, onBack }: DashboardProps) {
           ) : error ? (
             <div className="text-sm text-destructive">{error}</div>
           ) : fileTree.length > 0 ? (
-            <FileTree files={fileTree} onSelectFile={handleSelectFile} />
+            <FileTree files={fileTree} onSelectFile={handleSelectFile} selectedFile={selectedFile} />
           ) : (
             <div className="text-sm text-muted-foreground">No files found</div>
           )}
@@ -108,6 +119,11 @@ export function Dashboard({ repoPath, onBack }: DashboardProps) {
           <div className="text-xs text-muted-foreground space-y-1">
             <div>{fileTree.length > 0 ? `${countFiles(fileTree)} files` : ''}</div>
             <div>{connections.length} connections</div>
+            {selectedFile && (
+              <div className="text-primary">
+                Selected: {selectedFile.name}
+              </div>
+            )}
           </div>
         </SidebarFooter>
       </Sidebar>
@@ -117,14 +133,19 @@ export function Dashboard({ repoPath, onBack }: DashboardProps) {
             <div className="text-sm text-muted-foreground">Loading visualization...</div>
           </div>
         ) : showGraph ? (
-          <GraphVisualization connections={connections} className="h-full" />
+          <GraphVisualization 
+            connections={connections} 
+            selectedFile={selectedFile}
+            onFileSelect={handleSelectFile}
+            className="h-full" 
+          />
         ) : (
           <div className="p-6 h-full">
             <div className="h-full rounded-lg border bg-card p-8 flex items-center justify-center">
               <div className="text-center">
                 <h2 className="text-2xl font-semibold mb-2">File Tree View</h2>
                 <p className="text-muted-foreground">
-                  Navigate files in the sidebar to explore the repository structure
+                  Navigate files in sidebar to explore repository structure
                 </p>
               </div>
             </div>
